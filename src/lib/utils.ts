@@ -40,3 +40,17 @@ export function formatNumber(n: number): string {
   if (n >= 1000) return Math.round(n / 1000) + "K"
   return n.toLocaleString()
 }
+
+export function formatPay(n: number): string {
+  if (n >= 10000) {
+    return "¥" + (n / 10000).toFixed(1) + "万"
+  }
+  return "¥" + n.toLocaleString()
+}
+
+export function formatMonthlyPay(n: number): string {
+  if (n >= 10000) {
+    return "¥" + (n / 10000).toFixed(1) + "万/月"
+  }
+  return "¥" + n.toLocaleString() + "/月"
+}

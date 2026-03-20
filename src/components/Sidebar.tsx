@@ -2,7 +2,9 @@
 
 import React, { useMemo, useRef, useEffect } from "react"
 import { occupations } from "@/data/occupations"
-import { getScoreColor, getScoreColorRGB } from "@/lib/utils"
+import { getScoreColor, getScoreColorRGB, formatNumber } from "@/lib/utils"
+import type { EducationLevel } from "@/types"
+import { EDUCATION_LABELS } from "@/types"
 
 interface SidebarProps {
   minScore: number
@@ -18,28 +20,35 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
   }, [minScore, maxScore])
 
   const categories = useMemo(() => {
-    const catMap = new Map<string, { count: number; totalScore: number }>()
+    const catMap = new Map<string, { count: number; totalScore: number; totalEmployment: number }>()
     filteredOccupations.forEach(o => {
-      const existing = catMap.get(o.category) || { count: 0, totalScore: 0 }
+      const existing = catMap.get(o.category) || { count: 0, totalScore: 0, totalEmployment: 0 }
       catMap.set(o.category, { 
         count: existing.count + 1, 
-        totalScore: existing.totalScore + o.ai_score 
+        totalScore: existing.totalScore + o.ai_score,
+        totalEmployment: existing.totalEmployment + (o.employment || 0)
       })
     })
     return Array.from(catMap.entries())
       .map(([name, data]) => ({ 
         name, 
         count: data.count, 
-        avgScore: Math.round(data.totalScore / data.count) 
+        avgScore: Math.round(data.totalScore / data.count),
+        employment: data.totalEmployment
       }))
-      .sort((a, b) => b.count - a.count)
+      .sort((a, b) => b.employment - a.employment)
       .slice(0, 8)
   }, [filteredOccupations])
 
   const stats = useMemo(() => {
     const total = filteredOccupations.length
+    const totalEmployment = filteredOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
     const avgScore = total > 0 
       ? Math.round(filteredOccupations.reduce((sum, o) => sum + o.ai_score, 0) / total)
+      : 0
+    
+    const weightedAvgScore = totalEmployment > 0
+      ? Math.round(filteredOccupations.reduce((sum, o) => sum + o.ai_score * (o.employment || 0), 0) / totalEmployment)
       : 0
     
     const tiers = [
@@ -51,10 +60,45 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
     ]
 
     const tierCounts = tiers.map(tier => {
-      const count = filteredOccupations.filter(o => o.ai_score >= tier.min && o.ai_score < tier.max).length
-      const pct = total > 0 ? Math.round(count / total * 100) : 0
-      return { ...tier, count, pct }
+      const tierOccupations = filteredOccupations.filter(o => o.ai_score >= tier.min && o.ai_score < tier.max)
+      const count = tierOccupations.length
+      const employment = tierOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
+      const pct = totalEmployment > 0 ? Math.round(employment / totalEmployment * 100) : 0
+      return { ...tier, count, employment, pct }
     })
+
+    const salaryBuckets = [
+      { label: "<3千", min: 0, max: 3000 },
+      { label: "3-5千", min: 3000, max: 5000 },
+      { label: "5-8千", min: 5000, max: 8000 },
+      { label: "8-12千", min: 8000, max: 12000 },
+      { label: "1.2万+", min: 12000, max: Infinity }
+    ]
+
+    const exposureBySalary = salaryBuckets.map(bucket => {
+      const bucketOccupations = filteredOccupations.filter(o => 
+        o.median_salary !== undefined && o.median_salary >= bucket.min && o.median_salary < bucket.max
+      )
+      const totalEmp = bucketOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
+      const weightedScore = totalEmp > 0
+        ? Math.round(bucketOccupations.reduce((sum, o) => sum + o.ai_score * (o.employment || 0), 0) / totalEmp)
+        : 0
+      return { label: bucket.label, avgScore: weightedScore, employment: totalEmp }
+    })
+
+    const educationOrder: EducationLevel[] = ["no_degree", "high_school", "associate", "bachelor", "master", "doctoral"]
+    const exposureByEducation = educationOrder.map(edu => {
+      const eduOccupations = filteredOccupations.filter(o => o.education === edu)
+      const totalEmp = eduOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
+      const weightedScore = totalEmp > 0
+        ? Math.round(eduOccupations.reduce((sum, o) => sum + o.ai_score * (o.employment || 0), 0) / totalEmp)
+        : 0
+      return { label: EDUCATION_LABELS[edu], avgScore: weightedScore, employment: totalEmp }
+    })
+
+    const avgMonthlySalary = totalEmployment > 0
+      ? Math.round(filteredOccupations.reduce((sum, o) => sum + (o.median_salary || 5000) * (o.employment || 0), 0) / totalEmployment)
+      : 0
 
     const histogram = Array.from({ length: 10 }, (_, i) => {
       const bucketMin = i * 10
@@ -64,7 +108,19 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
     })
     const maxHistCount = Math.max(...histogram.map(h => h.count), 1)
 
-    return { total, avgScore, tierCounts, histogram, maxHistCount, categories }
+    return { 
+      total, 
+      totalEmployment,
+      avgScore, 
+      weightedAvgScore,
+      tierCounts, 
+      histogram, 
+      maxHistCount, 
+      categories,
+      exposureBySalary,
+      exposureByEducation,
+      avgMonthlySalary
+    }
   }, [filteredOccupations, categories])
 
   useEffect(() => {
@@ -91,19 +147,21 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
     ctx.putImageData(imageData, 0, 0)
   }, [])
 
-  const handleSliderChange = (values: number[]) => {
-    onRangeChange(values[0], values[1])
-  }
-
   return (
     <div id="sidebar">
       <div>
         <h1>职业 AI 敏感度分析</h1>
         <div className="subtitle">
-          {occupations.length} 个职业 · 颜色 = AI 替代风险
+          {formatNumber(stats.totalEmployment)} 从业人员 · {occupations.length} 个职业
           <br />
           数据来源：中国国家职业分类标准
         </div>
+      </div>
+
+      <div className="stat-section">
+        <h3>总从业人员</h3>
+        <div className="stat-big">{formatNumber(stats.totalEmployment)}</div>
+        <div className="stat-label">加权平均风险评分: {stats.weightedAvgScore}</div>
       </div>
 
       <div className="stat-section">
@@ -143,17 +201,69 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
       </div>
 
       <div className="stat-section">
-        <h3>风险等级分布</h3>
+        <h3>风险等级分布（按就业人数加权）</h3>
         <div className="tier-bar">
           {stats.tierCounts.map((tier, i) => (
             <div key={i} className="tier-row">
               <div className="tier-color" style={{ background: tier.color }} />
               <span className="tier-name">{tier.name}</span>
-              <span className="tier-jobs">{tier.count}</span>
+              <span className="tier-jobs">{formatNumber(tier.employment)}</span>
               <span className="tier-pct">{tier.pct}%</span>
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="stat-section">
+        <h3>按薪资水平的风险评分</h3>
+        <div className="hbar-chart">
+          {stats.exposureBySalary.map((item, i) => (
+            <div key={i} className="hbar-row">
+              <span className="hbar-label">{item.label}</span>
+              <div className="hbar-track">
+                <div
+                  className="hbar-fill"
+                  style={{
+                    width: `${item.avgScore}%`,
+                    background: getScoreColor(item.avgScore)
+                  }}
+                />
+              </div>
+              <span className="hbar-val">{item.avgScore}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="stat-section">
+        <h3>按教育水平的风险评分</h3>
+        <div className="hbar-chart">
+          {stats.exposureByEducation.map((item, i) => (
+            <div key={i} className="hbar-row">
+              <span className="hbar-label" title={item.label}>
+                {item.label.length > 4 ? item.label.slice(0, 4) : item.label}
+              </span>
+              <div className="hbar-track">
+                <div
+                  className="hbar-fill"
+                  style={{
+                    width: `${item.avgScore}%`,
+                    background: getScoreColor(item.avgScore)
+                  }}
+                />
+              </div>
+              <span className="hbar-val">{item.avgScore}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="stat-section">
+        <h3>职位月平均薪资</h3>
+        <div className="stat-big" style={{ color: getScoreColor(stats.avgMonthlySalary / 100) }}>
+          ¥{stats.avgMonthlySalary.toLocaleString()}/月
+        </div>
+        <div className="stat-label">按就业人数加权的平均月薪</div>
       </div>
 
       <div className="stat-section">
@@ -168,12 +278,12 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
                 <div
                   className="hbar-fill"
                   style={{
-                    width: `${(cat.count / stats.total) * 100}%`,
+                    width: `${(cat.employment / stats.totalEmployment) * 100}%`,
                     background: getScoreColor(cat.avgScore)
                   }}
                 />
               </div>
-              <span className="hbar-val">{cat.count}</span>
+              <span className="hbar-val">{formatNumber(cat.employment)}</span>
             </div>
           ))}
         </div>

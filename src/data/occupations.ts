@@ -1,6 +1,7 @@
 import type { Occupation } from "@/types"
+import { enhanceOccupations } from "@/lib/enhanceData"
 
-export const occupations: Occupation[] = [
+const rawOccupations: Occupation[] = [
   // ========== 第一大类：党的机关、国家机关、群众团体和社会组织、企事业单位负责人 ==========
   {
     job_name: "中国共产党机关负责人",
@@ -1787,3 +1788,5 @@ export const occupations: Occupation[] = [
     occupation_code: "8-00-00-00"
   }
 ]
+
+export const occupations = enhanceOccupations(rawOccupations)
