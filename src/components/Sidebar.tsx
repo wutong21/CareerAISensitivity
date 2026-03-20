@@ -52,15 +52,17 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
       : 0
     
     const tiers = [
-      { name: "极低风险", min: 0, max: 20, color: "rgba(68,159,48,1)" },
-      { name: "低风险", min: 20, max: 40, color: "rgba(122,156,42,1)" },
-      { name: "中等风险", min: 40, max: 60, color: "rgba(194,152,34,1)" },
-      { name: "高风险", min: 60, max: 80, color: "rgba(238,117,27,1)" },
+      { name: "极低风险", min: 0, max: 19, color: "rgba(68,159,48,1)" },
+      { name: "低风险", min: 20, max: 39, color: "rgba(122,156,42,1)" },
+      { name: "中等风险", min: 40, max: 59, color: "rgba(194,152,34,1)" },
+      { name: "高风险", min: 60, max: 79, color: "rgba(238,117,27,1)" },
       { name: "极高风险", min: 80, max: 100, color: "rgba(250,62,22,1)" }
     ]
 
-    const tierCounts = tiers.map(tier => {
-      const tierOccupations = filteredOccupations.filter(o => o.ai_score >= tier.min && o.ai_score < tier.max)
+    const tierCounts = tiers.map((tier) => {
+      const tierOccupations = filteredOccupations.filter(o => 
+        o.ai_score >= tier.min && o.ai_score <= tier.max
+      )
       const count = tierOccupations.length
       const employment = tierOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
       const pct = totalEmployment > 0 ? Math.round(employment / totalEmployment * 100) : 0
@@ -80,7 +82,12 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
     const histogram = Array.from({ length: 10 }, (_, i) => {
       const bucketMin = i * 10
       const bucketMax = (i + 1) * 10
-      const count = filteredOccupations.filter(o => o.ai_score >= bucketMin && o.ai_score < bucketMax).length
+      const count = filteredOccupations.filter(o => {
+        if (i === 9) {
+          return o.ai_score >= bucketMin && o.ai_score <= bucketMax
+        }
+        return o.ai_score >= bucketMin && o.ai_score < bucketMax
+      }).length
       return { bucket: i, count, min: bucketMin, max: bucketMax }
     })
     const maxHistCount = Math.max(...histogram.map(h => h.count), 1)
