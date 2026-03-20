@@ -67,25 +67,6 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
       return { ...tier, count, employment, pct }
     })
 
-    const salaryBuckets = [
-      { label: "<3千", min: 0, max: 3000 },
-      { label: "3-5千", min: 3000, max: 5000 },
-      { label: "5-8千", min: 5000, max: 8000 },
-      { label: "8-12千", min: 8000, max: 12000 },
-      { label: "1.2万+", min: 12000, max: Infinity }
-    ]
-
-    const exposureBySalary = salaryBuckets.map(bucket => {
-      const bucketOccupations = filteredOccupations.filter(o => 
-        o.median_salary !== undefined && o.median_salary >= bucket.min && o.median_salary < bucket.max
-      )
-      const totalEmp = bucketOccupations.reduce((sum, o) => sum + (o.employment || 0), 0)
-      const weightedScore = totalEmp > 0
-        ? Math.round(bucketOccupations.reduce((sum, o) => sum + o.ai_score * (o.employment || 0), 0) / totalEmp)
-        : 0
-      return { label: bucket.label, avgScore: weightedScore, employment: totalEmp }
-    })
-
     const educationOrder: EducationLevel[] = ["no_degree", "high_school", "associate", "bachelor", "master", "doctoral"]
     const exposureByEducation = educationOrder.map(edu => {
       const eduOccupations = filteredOccupations.filter(o => o.education === edu)
@@ -95,10 +76,6 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
         : 0
       return { label: EDUCATION_LABELS[edu], avgScore: weightedScore, employment: totalEmp }
     })
-
-    const avgMonthlySalary = totalEmployment > 0
-      ? Math.round(filteredOccupations.reduce((sum, o) => sum + (o.median_salary || 5000) * (o.employment || 0), 0) / totalEmployment)
-      : 0
 
     const histogram = Array.from({ length: 10 }, (_, i) => {
       const bucketMin = i * 10
@@ -117,9 +94,7 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
       histogram, 
       maxHistCount, 
       categories,
-      exposureBySalary,
-      exposureByEducation,
-      avgMonthlySalary
+      exposureByEducation
     }
   }, [filteredOccupations, categories])
 
