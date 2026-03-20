@@ -109,6 +109,7 @@ export function TreemapChart({
   onBackToCategories
 }: TreemapChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const tooltipRef = useRef<HTMLDivElement>(null)
   const [rects, setRects] = useState<RectItem[]>([])
   const [hovered, setHovered] = useState<RectItem | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 })
@@ -287,7 +288,24 @@ export function TreemapChart({
 
     setHovered(found)
     if (found) {
-      setTooltipPos({ x: e.clientX, y: e.clientY })
+      const tooltipWidth = 280
+      const tooltipHeight = 200
+      const padding = 16
+      
+      let x = e.clientX + padding
+      let y = e.clientY + padding
+      
+      if (x + tooltipWidth > window.innerWidth) {
+        x = e.clientX - tooltipWidth - padding
+      }
+      if (y + tooltipHeight > window.innerHeight) {
+        y = e.clientY - tooltipHeight - padding
+      }
+      
+      x = Math.max(padding, x)
+      y = Math.max(padding, y)
+      
+      setTooltipPos({ x, y })
       canvas.style.cursor = "pointer"
     } else {
       canvas.style.cursor = "default"
@@ -345,10 +363,11 @@ export function TreemapChart({
 
       <div
         id="tooltip"
+        ref={tooltipRef}
         className={hovered ? "visible" : ""}
         style={{
-          left: tooltipPos.x + 16,
-          top: tooltipPos.y + 16,
+          left: tooltipPos.x,
+          top: tooltipPos.y,
         }}
       >
         {hovered && (
