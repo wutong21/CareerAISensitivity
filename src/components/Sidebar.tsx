@@ -215,27 +215,6 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
       </div>
 
       <div className="stat-section">
-        <h3>按薪资水平的风险评分</h3>
-        <div className="hbar-chart">
-          {stats.exposureBySalary.map((item, i) => (
-            <div key={i} className="hbar-row">
-              <span className="hbar-label">{item.label}</span>
-              <div className="hbar-track">
-                <div
-                  className="hbar-fill"
-                  style={{
-                    width: `${item.avgScore}%`,
-                    background: getScoreColor(item.avgScore)
-                  }}
-                />
-              </div>
-              <span className="hbar-val">{item.avgScore}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="stat-section">
         <h3>按教育水平的风险评分</h3>
         <div className="hbar-chart">
           {stats.exposureByEducation.map((item, i) => (
@@ -256,14 +235,6 @@ export function Sidebar({ minScore, maxScore, onRangeChange }: SidebarProps) {
             </div>
           ))}
         </div>
-      </div>
-
-      <div className="stat-section">
-        <h3>职位月平均薪资</h3>
-        <div className="stat-big" style={{ color: getScoreColor(stats.avgMonthlySalary / 100) }}>
-          ¥{stats.avgMonthlySalary.toLocaleString()}/月
-        </div>
-        <div className="stat-label">按就业人数加权的平均月薪</div>
       </div>
 
       <div className="stat-section">

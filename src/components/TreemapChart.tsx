@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState, useCallback } from "react"
 import { occupations } from "@/data/occupations"
-import { getScoreColor, getScoreLabel, formatNumber, formatMonthlyPay } from "@/lib/utils"
+import { getScoreColor, getScoreLabel, formatNumber } from "@/lib/utils"
 import type { Occupation } from "@/types"
 import { EDUCATION_LABELS } from "@/types"
 
@@ -369,8 +369,6 @@ export function TreemapChart({
               <span className="value">{hovered.category}</span>
               <span className="label">职业代码</span>
               <span className="value">{hovered.occupation_code}</span>
-              <span className="label">月平均薪资</span>
-              <span className="value">{hovered.median_salary ? formatMonthlyPay(hovered.median_salary) : "—"}</span>
               <span className="label">从业人员</span>
               <span className="value">{hovered.employment ? formatNumber(hovered.employment) : "—"}</span>
               <span className="label">就业前景</span>
