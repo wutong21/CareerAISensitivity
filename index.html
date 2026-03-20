@@ -1,0 +1,1285 @@
+<html lang="en"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Exposure of the US Job Market</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0f;
+  --bg2: #12121a;
+  --fg: #e0e0e8;
+  --fg2: #888894;
+  --sidebar-w: 220px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  overflow: hidden;
+  height: 100vh;
+}
+
+#sidebar {
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  padding: 20px 18px;
+  z-index: 10;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#sidebar h1 {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+#sidebar .subtitle {
+  font-size: 11px;
+  color: var(--fg2);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+#sidebar .subtitle a { color: var(--fg2); }
+
+.stat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-section h3 {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fg2);
+}
+.stat-big {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+.stat-label {
+  font-size: 11px;
+  color: var(--fg2);
+}
+
+.tier-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tier-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.tier-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.tier-name {
+  flex: 1;
+  color: var(--fg2);
+}
+.tier-jobs {
+  text-align: right;
+  white-space: nowrap;
+}
+.tier-pct {
+  text-align: right;
+  width: 32px;
+  color: var(--fg2);
+  font-size: 10px;
+}
+
+.histogram {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 48px;
+}
+.histogram .bar {
+  flex: 1;
+  border-radius: 1px 1px 0 0;
+  min-height: 1px;
+  position: relative;
+}
+.hist-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--fg2);
+  margin-top: 2px;
+}
+
+.hbar-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hbar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.hbar-label {
+  width: 68px;
+  flex-shrink: 0;
+  color: var(--fg2);
+  font-size: 10px;
+  text-align: right;
+}
+.hbar-track {
+  flex: 1;
+  height: 10px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.hbar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+.hbar-val {
+  width: 22px;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--fg);
+  text-align: right;
+}
+
+.gradient-legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--fg2);
+}
+.gradient-legend canvas {
+  border-radius: 2px;
+}
+
+canvas#canvas {
+  display: block;
+  position: fixed;
+  top: 0;
+  left: var(--sidebar-w);
+  cursor: default;
+}
+
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  background: var(--bg2);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 340px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  z-index: 20;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+#tooltip.visible { opacity: 1; }
+#tooltip .tt-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #fff;
+}
+#tooltip .tt-exposure {
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+#tooltip .tt-stats {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 2px 12px;
+  font-size: 12px;
+}
+#tooltip .tt-stats .label { color: var(--fg2); }
+#tooltip .tt-stats .value { color: var(--fg); text-align: right; }
+#tooltip .tt-rationale {
+  font-size: 11px;
+  color: var(--fg2);
+  margin-top: 8px;
+  line-height: 1.4;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  padding-top: 8px;
+}
+</style>
+<style data-id="immersive-translate-input-injected-css">.immersive-translate-input {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 2147483647;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.immersive-translate-attach-loading::after {
+  content: " ";
+
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-2000%, -50%);
+  z-index: 100;
+}
+
+.immersive-translate-loading-spinner {
+  vertical-align: middle !important;
+  width: 10px !important;
+  height: 10px !important;
+  display: inline-block !important;
+  margin: 0 4px !important;
+  border: 2px rgba(221, 244, 255, 0.6) solid !important;
+  border-top: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-left: 2px rgba(0, 0, 0, 0.375) solid !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  -webkit-animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+  animation: immersive-translate-loading-animation 0.6s infinite linear !important;
+}
+
+@-webkit-keyframes immersive-translate-loading-animation {
+  from {
+    -webkit-transform: rotate(0deg);
+  }
+
+  to {
+    -webkit-transform: rotate(359deg);
+  }
+}
+
+@keyframes immersive-translate-loading-animation {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+.immersive-translate-input-loading {
+  --loading-color: #f78fb6;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: block;
+  margin: 12px auto;
+  position: relative;
+  color: white;
+  left: -100px;
+  box-sizing: border-box;
+  animation: immersiveTranslateShadowRolling 1.5s linear infinite;
+}
+
+@keyframes immersiveTranslateShadowRolling {
+  0% {
+    box-shadow: 0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  12% {
+    box-shadow: 100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  25% {
+    box-shadow: 110px 0 var(--loading-color), 100px 0 var(--loading-color),
+      0px 0 rgba(255, 255, 255, 0), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  36% {
+    box-shadow: 120px 0 var(--loading-color), 110px 0 var(--loading-color),
+      100px 0 var(--loading-color), 0px 0 rgba(255, 255, 255, 0);
+  }
+
+  50% {
+    box-shadow: 130px 0 var(--loading-color), 120px 0 var(--loading-color),
+      110px 0 var(--loading-color), 100px 0 var(--loading-color);
+  }
+
+  62% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color),
+      120px 0 var(--loading-color), 110px 0 var(--loading-color);
+  }
+
+  75% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      130px 0 var(--loading-color), 120px 0 var(--loading-color);
+  }
+
+  87% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 130px 0 var(--loading-color);
+  }
+
+  100% {
+    box-shadow: 200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0),
+      200px 0 rgba(255, 255, 255, 0), 200px 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.immersive-translate-modal {
+  position: fixed;
+  z-index: 2147483647;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.4);
+  font-size: 15px;
+}
+
+.immersive-translate-modal-content {
+  background-color: #fefefe;
+  margin: 10% auto;
+  padding: 40px 24px 24px;
+  border-radius: 12px;
+  width: 350px;
+  font-family: system-ui, -apple-system, "Segoe UI", "Roboto", "Ubuntu",
+    "Cantarell", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  position: relative;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-content {
+    margin: 25% auto !important;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .immersive-translate-modal-content {
+    width: 80vw !important;
+    margin: 20vh auto !important;
+    padding: 20px 12px 12px !important;
+  }
+
+  .immersive-translate-modal-title {
+    font-size: 14px !important;
+  }
+
+  .immersive-translate-modal-body {
+    font-size: 13px !important;
+    max-height: 60vh !important;
+  }
+
+  .immersive-translate-btn {
+    font-size: 13px !important;
+    padding: 8px 16px !important;
+    margin: 0 4px !important;
+  }
+
+  .immersive-translate-modal-footer {
+    gap: 6px !important;
+    margin-top: 16px !important;
+  }
+}
+
+.immersive-translate-modal .immersive-translate-modal-content-in-input {
+  max-width: 500px;
+}
+.immersive-translate-modal-content-in-input .immersive-translate-modal-body {
+  text-align: left;
+  max-height: unset;
+}
+
+.immersive-translate-modal-title {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #333333;
+}
+
+.immersive-translate-modal-body {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 400;
+  color: #333333;
+  margin-top: 24px;
+}
+
+@media screen and (max-width: 768px) {
+  .immersive-translate-modal-body {
+    max-height: 250px;
+    overflow-y: auto;
+  }
+}
+
+.immersive-translate-close {
+  color: #666666;
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.immersive-translate-close:hover,
+.immersive-translate-close:focus {
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.immersive-translate-modal-footer {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.immersive-translate-btn {
+  width: fit-content;
+  color: #fff;
+  background-color: #ea4c89;
+  border: none;
+  font-size: 14px;
+  margin: 0 8px;
+  padding: 9px 30px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.immersive-translate-btn-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.immersive-translate-btn:hover {
+  background-color: #f082ac;
+}
+.immersive-translate-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.immersive-translate-btn:disabled:hover {
+  background-color: #ea4c89;
+}
+
+.immersive-translate-link-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: none;
+  cursor: pointer;
+  height: 30px;
+  line-height: 30px;
+}
+
+.immersive-translate-cancel-btn {
+  /* gray color */
+  background-color: rgb(89, 107, 120);
+}
+
+.immersive-translate-cancel-btn:hover {
+  background-color: hsl(205, 20%, 32%);
+}
+
+.immersive-translate-action-btn {
+  background-color: transparent;
+  color: #ea4c89;
+  border: 1px solid #ea4c89;
+}
+
+.immersive-translate-btn svg {
+  margin-right: 5px;
+}
+
+.immersive-translate-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-primary-link {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-drag: none;
+  text-decoration: none;
+  color: #ea4c89;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+}
+
+.immersive-translate-modal input[type="radio"] {
+  margin: 0 6px;
+  cursor: pointer;
+}
+
+.immersive-translate-modal label {
+  cursor: pointer;
+}
+
+.immersive-translate-close-action {
+  position: absolute;
+  top: 2px;
+  right: 0px;
+  cursor: pointer;
+}
+
+.imt-image-status {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 16px !important;
+}
+.imt-image-status img,
+.imt-image-status svg,
+.imt-img-loading {
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 0 8px 0 !important;
+  min-height: 28px !important;
+  min-width: 28px !important;
+  position: relative !important;
+}
+.imt-img-loading {
+  background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAA4CAMAAACfWMssAAAAtFBMVEUAAAD////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////oK74hAAAAPHRSTlMABBMIDyQXHwyBfFdDMSw+OjXCb+5RG51IvV/k0rOqlGRM6KKMhdvNyZBz9MaupmxpWyj437iYd/yJVNZeuUC7AAACt0lEQVRIx53T2XKiUBCA4QYOiyCbiAsuuGBcYtxiYtT3f6/pbqoYHVFO5r+iivpo6DpAWYpqeoFfr9f90DsYAuRSWkFnPO50OgR9PwiCUFcl2GEcx+N/YBh6pvKaefHlUgZd1zVe0NbYcQjGBfzrPE8Xz8aF+71D8gG6DHFPpc4a7xFiCDuhaWgKgGIJQ3d5IMGDrpS4S5KgpIm+en9f6PlAhKby4JwEIxlYJV9h5k5nee9GoxHJ2IDSNB0dwdad1NAxDJ/uXDHYmebdk4PdbkS58CIVHdYSUHTYYRWOJblWSyu2lmy3KNFVJNBhxcuGW4YBVCbYGRZwIooipHsNqjM4FbgOQqQqSKQQU9V8xmi1QlgHqQQ6DDBvRUVCDirs+EzGDGOQTCATgtYTnbCVLgsVgRE0T1QE0qHCFAht2z6dLvJQs3Lo2FQoDxWNUiBhaP4eRgwNkI+dAjVOA/kUrIDwf3CG8NfNOE0eiFotSuo+rBiq8tD9oY4Qzc6YJw99hl1wzpQvD7ef2M8QgnOGJfJw+EltQc+oX2yn907QB22WZcvlUpd143dqQu+8pCJZuGE4xCuPXJqqcs5sNpsI93Rmzym1k4Npk+oD1SH3/a3LOK/JpUBpWfqNySxWzCfNCUITuDG5dtuphrUJ1myeIE9bIsPiKrfqTai5WZxbhtNphYx6GEIHihyGFTI69lje/rxajdh0s0msZ0zYxyPLhYCb1CyHm9Qsd2H37Y3lugVwL9kNh8Ot8cha6fUNQ8nuXi5z9/ExsAO4zQrb/ev1yrCB7lGyQzgYDGuxq1toDN/JGvN+HyWNHKB7zEoK+PX11e12G431erGYzwmytAWU56fkMHY5JJnDRR2eZji3AwtIcrEV8Cojat/BdQ7XOwGV1e1hDjGGjXbdArm8uJZtCH5MbcctVX8A1WpqumJHwckAAAAASUVORK5CYII=");
+  background-size: 28px 28px;
+  animation: image-loading-rotate 1s linear infinite !important;
+}
+
+.imt-image-status span {
+  color: var(--bg-2, #fff) !important;
+  font-size: 14px !important;
+  line-height: 14px !important;
+  font-weight: 500 !important;
+  font-family: "PingFang SC", Arial, sans-serif !important;
+}
+
+.imt-primary-button {
+  display: flex;
+  padding: 12px 80px;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 8px;
+  background: #ea4c89;
+  color: #fff;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 24px;
+  border: none;
+  cursor: pointer;
+}
+
+.imt-retry-text {
+  color: #999;
+  text-align: center;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 21px;
+  cursor: pointer;
+}
+
+.imt-action-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.imt-modal-content-text {
+  text-align: left;
+  color: #333;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+@keyframes image-loading-rotate {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.imt-linear-gradient-text {
+  background: linear-gradient(90deg, #00a6ff 0%, #c369ff 52.4%, #ff4590 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.imt-flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.imt-linear-black-btn {
+  border-radius: 50px;
+  background: linear-gradient(66deg, #222 19%, #696969 94.25%);
+  height: 48px;
+  width: 100%;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  justify-content: center;
+}
+</style></head>
+<body>
+
+<div id="sidebar">
+  <div>
+    <h1>AI Exposure of the US Job Market</h1>
+    <div class="subtitle">342 occupations · area = employment · color = AI exposure<br>Data from <a href="https://www.bls.gov/ooh/">BLS</a>, scored by Gemini Flash<br><a href="https://github.com/karpathy/jobs">GitHub</a></div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Total jobs</h3>
+    <div class="stat-big" id="statTotalJobs">143M</div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Weighted avg. exposure</h3>
+    <div class="stat-big" id="statAvgExposure"><span style="color:rgba(227,150,30,1)">4.9</span></div>
+    <div class="stat-label">job-weighted, 0–10 scale</div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Jobs by exposure (weighted by employment)</h3>
+    <div class="histogram" id="histogram"><div class="bar" style="height:2%;background:rgba(50,160,50,0.7)" title="0: 0 jobs"></div><div class="bar" style="height:26.205401408332353%;background:rgba(86,158,46,0.7)" title="1: 6.2M jobs"></div><div class="bar" style="height:99.57229047274927%;background:rgba(122,156,42,0.7)" title="2: 23.7M jobs"></div><div class="bar" style="height:98.72653479656488%;background:rgba(158,154,38,0.7)" title="3: 23.5M jobs"></div><div class="bar" style="height:78.7014940423172%;background:rgba(194,152,34,0.7)" title="4: 18.7M jobs"></div><div class="bar" style="height:46.12288456044233%;background:rgba(230,150,30,0.7)" title="5: 11.0M jobs"></div><div class="bar" style="height:45.84936893938121%;background:rgba(235,128,28,0.7)" title="6: 10.9M jobs"></div><div class="bar" style="height:100%;background:rgba(240,106,26,0.7)" title="7: 23.8M jobs"></div><div class="bar" style="height:45.5443423020688%;background:rgba(245,84,24,0.7)" title="8: 10.8M jobs"></div><div class="bar" style="height:60.18267986488076%;background:rgba(250,62,22,0.7)" title="9: 14.3M jobs"></div><div class="bar" style="height:2%;background:rgba(255,40,20,0.7)" title="10: 44K jobs"></div></div>
+    <div class="hist-labels"><span>0</span><span>5</span><span>10</span></div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Breakdown</h3>
+    <div class="tier-bar" id="tierBar"><div class="tier-row">
+      <div class="tier-color" style="background:rgba(68,159,48,1)"></div>
+      <span class="tier-name">Minimal (0-1)</span>
+      <span class="tier-jobs">6.2M</span>
+      <span class="tier-pct">4%</span>
+    </div><div class="tier-row">
+      <div class="tier-color" style="background:rgba(140,155,40,1)"></div>
+      <span class="tier-name">Low (2-3)</span>
+      <span class="tier-jobs">47.2M</span>
+      <span class="tier-pct">33%</span>
+    </div><div class="tier-row">
+      <div class="tier-color" style="background:rgba(212,151,32,1)"></div>
+      <span class="tier-name">Moderate (4-5)</span>
+      <span class="tier-jobs">29.7M</span>
+      <span class="tier-pct">21%</span>
+    </div><div class="tier-row">
+      <div class="tier-color" style="background:rgba(238,117,27,1)"></div>
+      <span class="tier-name">High (6-7)</span>
+      <span class="tier-jobs">34.7M</span>
+      <span class="tier-pct">24%</span>
+    </div><div class="tier-row">
+      <div class="tier-color" style="background:rgba(250,62,22,1)"></div>
+      <span class="tier-name">Very high (8-10)</span>
+      <span class="tier-jobs">25.2M</span>
+      <span class="tier-pct">18%</span>
+    </div></div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Exposure by pay</h3>
+    <div class="hbar-chart" id="payChart"><div class="hbar-row">
+      <span class="hbar-label">&lt;$35K</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:34.10708619187021%;background:rgba(173,153,36,0.8)"></div></div>
+      <span class="hbar-val">3.4</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">$35–50K</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:44.11856546837026%;background:rgba(209,151,32,0.8)"></div></div>
+      <span class="hbar-val">4.4</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">$50–75K</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:50.07941663134%;background:rgba(230,150,30,0.8)"></div></div>
+      <span class="hbar-val">5.0</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">$75–100K</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:60.19821545104688%;background:rgba(235,128,28,0.8)"></div></div>
+      <span class="hbar-val">6.0</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">$100K+</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:67.40782500845643%;background:rgba(239,112,27,0.8)"></div></div>
+      <span class="hbar-val">6.7</span>
+    </div></div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Exposure by education</h3>
+    <div class="hbar-chart" id="eduChart"><div class="hbar-row">
+      <span class="hbar-label">No degree/HS</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:41.450664753491914%;background:rgba(199,152,33,0.8)"></div></div>
+      <span class="hbar-val">4.1</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">Postsec/Assoc</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:46.92884841744957%;background:rgba(219,151,31,0.8)"></div></div>
+      <span class="hbar-val">4.7</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">Bachelor's</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:67.38466240622395%;background:rgba(239,112,27,0.8)"></div></div>
+      <span class="hbar-val">6.7</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">Master's</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:56.71117881567434%;background:rgba(233,135,29,0.8)"></div></div>
+      <span class="hbar-val">5.7</span>
+    </div><div class="hbar-row">
+      <span class="hbar-label">Doctoral/Prof</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:56.89953810623557%;background:rgba(233,135,29,0.8)"></div></div>
+      <span class="hbar-val">5.7</span>
+    </div></div>
+  </div>
+
+  <div class="stat-section">
+    <h3>Wages exposed</h3>
+    <div class="stat-big" id="statWages">$3.7T</div>
+    <div class="stat-label" id="statWagesDesc">annual wages in high-exposure jobs (7+)</div>
+  </div>
+
+  <div class="gradient-legend">
+    <span>Low</span>
+    <canvas id="gradientLegend" width="80" height="8"></canvas>
+    <span>High</span>
+  </div>
+</div>
+
+<canvas id="canvas" width="602" height="1556" style="width: 301px; height: 778px; cursor: pointer;"></canvas>
+
+<div id="tooltip" class="" style="left: 764px; top: 210px;">
+  <div class="tt-title">Taxi drivers, shuttle drivers, and chauffeurs</div>
+  <div class="tt-exposure"><span style="color:rgba(230,150,30,1);font-weight:600;">AI Exposure: 5/10</span><div style="margin-top:3px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;"><div style="height:100%;width:50%;background:rgba(230,150,30,1);border-radius:2px;"></div></div></div>
+  <div class="tt-stats">
+    <span class="label">Median pay</span><span class="value">$36,660</span>
+    <span class="label">Jobs (2024)</span><span class="value">448K</span>
+    <span class="label">Outlook</span><span class="value">9% (Much faster than average)</span>
+    <span class="label">Education</span><span class="value">No formal educational credential</span>
+  </div>
+  <div class="tt-rationale">While the core task of driving is highly susceptible to automation through autonomous vehicle technology (AI), the job currently requires significant physical presence for tasks like loading luggage, assisting passengers with disabilities, and performing vehicle maintenance. The transition to fully driverless fleets faces regulatory and technical hurdles in complex environments, but the long-term trajectory for this digital-adjacent physical task is one of high potential displacement.</div>
+</div>
+
+<script>
+
+// ── Exposure color scale ───────────────────────────────────────────────
+
+function exposureColor(score) {
+  if (score == null) return [128, 128, 128];
+  const t = Math.max(0, Math.min(10, score)) / 10;
+  let r, g, b;
+  if (t < 0.5) {
+    const s = t / 0.5;
+    r = Math.round(50 + s * 180);
+    g = Math.round(160 - s * 10);
+    b = Math.round(50 - s * 20);
+  } else {
+    const s = (t - 0.5) / 0.5;
+    r = Math.round(230 + s * 25);
+    g = Math.round(150 - s * 110);
+    b = Math.round(30 - s * 10);
+  }
+  return [r, g, b];
+}
+
+function exposureColorCSS(score, alpha) {
+  const [r, g, b] = exposureColor(score);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+// ── Squarified treemap layout ──────────────────────────────────────────
+
+function squarify(items, x, y, w, h) {
+  if (items.length === 0) return [];
+  if (items.length === 1) {
+    return [{ ...items[0], rx: x, ry: y, rw: w, rh: h }];
+  }
+
+  const total = items.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return [];
+
+  const results = [];
+  let remaining = [...items];
+  let cx = x, cy = y, cw = w, ch = h;
+
+  while (remaining.length > 0) {
+    const remTotal = remaining.reduce((s, d) => s + d.value, 0);
+    const vertical = cw >= ch;
+    const side = vertical ? ch : cw;
+
+    let row = [remaining[0]];
+    let rowSum = remaining[0].value;
+
+    for (let i = 1; i < remaining.length; i++) {
+      const candidate = [...row, remaining[i]];
+      const candidateSum = rowSum + remaining[i].value;
+      if (worstAspect(candidate, candidateSum, side, remTotal, vertical ? cw : ch) <
+          worstAspect(row, rowSum, side, remTotal, vertical ? cw : ch)) {
+        row = candidate;
+        rowSum = candidateSum;
+      } else {
+        break;
+      }
+    }
+
+    const rowFraction = rowSum / remTotal;
+    const rowThickness = vertical ? cw * rowFraction : ch * rowFraction;
+
+    let offset = 0;
+    for (const item of row) {
+      const itemFraction = item.value / rowSum;
+      const itemLength = side * itemFraction;
+      if (vertical) {
+        results.push({ ...item, rx: cx, ry: cy + offset, rw: rowThickness, rh: itemLength });
+      } else {
+        results.push({ ...item, rx: cx + offset, ry: cy, rw: itemLength, rh: rowThickness });
+      }
+      offset += itemLength;
+    }
+
+    if (vertical) {
+      cx += rowThickness;
+      cw -= rowThickness;
+    } else {
+      cy += rowThickness;
+      ch -= rowThickness;
+    }
+
+    remaining = remaining.slice(row.length);
+  }
+
+  return results;
+}
+
+function worstAspect(row, rowSum, side, totalArea, availableExtent) {
+  const rowExtent = availableExtent * (rowSum / totalArea);
+  if (rowExtent === 0) return Infinity;
+  let worst = 0;
+  for (const item of row) {
+    const itemLen = side * (item.value / rowSum);
+    if (itemLen === 0) continue;
+    const aspect = Math.max(rowExtent / itemLen, itemLen / rowExtent);
+    if (aspect > worst) worst = aspect;
+  }
+  return worst;
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────
+
+let data = [];
+let rects = [];
+let hovered = null;
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+let dpr = window.devicePixelRatio || 1;
+
+const MARGIN = 12;
+const GAP = 1.5;
+
+function layout() {
+  const sidebarW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'));
+  const w = (window.innerWidth - sidebarW);
+  const h = window.innerHeight;
+
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + "px";
+  canvas.style.height = h + "px";
+
+  const tx = MARGIN;
+  const ty = MARGIN;
+  const tw = w - MARGIN * 2;
+  const th = h - MARGIN * 2;
+
+  const byCategory = {};
+  for (const d of data) {
+    const cat = d.category;
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(d);
+  }
+
+  const categories = Object.keys(byCategory).map(cat => ({
+    cat,
+    items: byCategory[cat].sort((a, b) => (b.jobs || 0) - (a.jobs || 0)),
+    value: byCategory[cat].reduce((s, d) => s + (d.jobs || 1), 0),
+  })).sort((a, b) => b.value - a.value);
+
+  const catRects = squarify(categories, tx, ty, tw, th);
+
+  rects = [];
+  for (const cr of catRects) {
+    const innerGap = GAP;
+    const items = cr.items.map(d => ({ ...d, value: d.jobs || 1 }));
+    const innerRects = squarify(items,
+      cr.rx + innerGap, cr.ry + innerGap,
+      cr.rw - innerGap * 2, cr.rh - innerGap * 2
+    );
+    for (const ir of innerRects) {
+      rects.push(ir);
+    }
+  }
+}
+
+function draw() {
+  const w = canvas.width;
+  const h = canvas.height;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = "#0a0a0f";
+  ctx.fillRect(0, 0, w / dpr, h / dpr);
+
+  for (const r of rects) {
+    const isHovered = r === hovered;
+
+    const g = GAP / 2;
+    const rx = r.rx + g;
+    const ry = r.ry + g;
+    const rw = r.rw - g * 2;
+    const rh = r.rh - g * 2;
+
+    if (rw <= 0 || rh <= 0) continue;
+
+    const fillAlpha = isHovered ? 0.8 : 0.5;
+    ctx.fillStyle = exposureColorCSS(r.exposure, fillAlpha);
+    ctx.fillRect(rx, ry, rw, rh);
+
+    if (isHovered) {
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rx, ry, rw, rh);
+    }
+
+    const minW = 50;
+    const minH = 18;
+    if (rw > minW && rh > minH) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(rx + 4, ry + 2, rw - 8, rh - 4);
+      ctx.clip();
+
+      const fontSize = Math.min(13, Math.max(9, Math.min(rw / 10, rh / 3)));
+      ctx.font = `500 ${fontSize}px -apple-system, system-ui, sans-serif`;
+      ctx.fillStyle = isHovered ? "#fff" : "rgba(255,255,255,0.85)";
+      ctx.textBaseline = "top";
+      ctx.fillText(r.title, rx + 5, ry + 4);
+
+      if (rh > 34 && rw > 60) {
+        const info = (r.exposure != null ? r.exposure + "/10" : "") +
+                     (r.jobs ? " \u00b7 " + formatNumber(r.jobs) + " jobs" : "");
+        ctx.font = `400 ${Math.max(8, fontSize - 2)}px -apple-system, system-ui, sans-serif`;
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText(info, rx + 5, ry + 4 + fontSize + 2);
+      }
+
+      ctx.restore();
+    }
+  }
+}
+
+function hitTest(mx, my) {
+  const sidebarW = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--sidebar-w'));
+  const cx = mx - sidebarW;
+  const cy = my;
+  for (let i = rects.length - 1; i >= 0; i--) {
+    const r = rects[i];
+    if (cx >= r.rx && cx < r.rx + r.rw && cy >= r.ry && cy < r.ry + r.rh) {
+      return r;
+    }
+  }
+  return null;
+}
+
+function formatNumber(n) {
+  if (n == null) return "\u2014";
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
+  if (n >= 1000) return Math.round(n / 1000) + "K";
+  return n.toLocaleString();
+}
+
+function formatPay(n) {
+  if (n == null) return "\u2014";
+  return "$" + n.toLocaleString();
+}
+
+function showTooltip(d, mx, my) {
+  const tt = document.getElementById("tooltip");
+
+  tt.querySelector(".tt-title").textContent = d.title;
+
+  const score = d.exposure != null ? d.exposure : null;
+  if (score != null) {
+    const barWidth = score * 10;
+    const color = exposureColorCSS(score, 1);
+    tt.querySelector(".tt-exposure").innerHTML =
+      `<span style="color:${color};font-weight:600;">AI Exposure: ${score}/10</span>` +
+      `<div style="margin-top:3px;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;">` +
+      `<div style="height:100%;width:${barWidth}%;background:${color};border-radius:2px;"></div></div>`;
+  } else {
+    tt.querySelector(".tt-exposure").innerHTML = "";
+  }
+
+  tt.querySelector(".tt-stats").innerHTML = `
+    <span class="label">Median pay</span><span class="value">${formatPay(d.pay)}</span>
+    <span class="label">Jobs (2024)</span><span class="value">${formatNumber(d.jobs)}</span>
+    <span class="label">Outlook</span><span class="value">${d.outlook != null ? d.outlook + '%' : '\u2014'} ${d.outlook_desc ? '(' + d.outlook_desc + ')' : ''}</span>
+    <span class="label">Education</span><span class="value">${d.education || '\u2014'}</span>
+  `;
+
+  tt.querySelector(".tt-rationale").textContent =
+    d.exposure_rationale || "";
+
+  const pad = 16;
+  let tx = mx + pad;
+  let ty = my - pad;
+  if (tx + 340 > window.innerWidth) tx = mx - 340 - pad;
+  if (ty < 10) ty = my + pad;
+  if (ty + 200 > window.innerHeight) ty = my - 200;
+
+  tt.style.left = tx + "px";
+  tt.style.top = ty + "px";
+  tt.classList.add("visible");
+}
+
+function hideTooltip() {
+  document.getElementById("tooltip").classList.remove("visible");
+}
+
+// ── Sidebar stats ──────────────────────────────────────────────────────
+
+function computeStats() {
+  const totalJobs = data.reduce((s, d) => s + (d.jobs || 0), 0);
+
+  // Job-weighted average exposure
+  let weightedSum = 0, weightedCount = 0;
+  for (const d of data) {
+    if (d.exposure != null && d.jobs) {
+      weightedSum += d.exposure * d.jobs;
+      weightedCount += d.jobs;
+    }
+  }
+  const weightedAvg = weightedCount > 0 ? weightedSum / weightedCount : 0;
+
+  // Histogram: jobs per exposure score 0-10
+  const histogram = new Array(11).fill(0);
+  for (const d of data) {
+    if (d.exposure != null && d.jobs) {
+      histogram[d.exposure] += d.jobs;
+    }
+  }
+
+  // Tiers
+  const tiers = [
+    { name: "Minimal", range: [0, 1], color: exposureColorCSS(0.5, 1) },
+    { name: "Low", range: [2, 3], color: exposureColorCSS(2.5, 1) },
+    { name: "Moderate", range: [4, 5], color: exposureColorCSS(4.5, 1) },
+    { name: "High", range: [6, 7], color: exposureColorCSS(6.5, 1) },
+    { name: "Very high", range: [8, 10], color: exposureColorCSS(9, 1) },
+  ];
+  for (const tier of tiers) {
+    tier.jobs = 0;
+    for (const d of data) {
+      if (d.exposure != null && d.jobs &&
+          d.exposure >= tier.range[0] && d.exposure <= tier.range[1]) {
+        tier.jobs += d.jobs;
+      }
+    }
+    tier.pct = totalJobs > 0 ? (tier.jobs / totalJobs * 100) : 0;
+  }
+
+  // Wages exposed (jobs with exposure >= 7, weighted by pay)
+  let wagesExposed = 0;
+  for (const d of data) {
+    if (d.exposure != null && d.exposure >= 7 && d.jobs && d.pay) {
+      wagesExposed += d.jobs * d.pay;
+    }
+  }
+
+  // Render
+  document.getElementById("statTotalJobs").textContent =
+    (totalJobs / 1e6).toFixed(0) + "M";
+  document.getElementById("statAvgExposure").innerHTML =
+    `<span style="color:${exposureColorCSS(weightedAvg, 1)}">${weightedAvg.toFixed(1)}</span>`;
+
+  // Histogram
+  const maxHist = Math.max(...histogram);
+  const histEl = document.getElementById("histogram");
+  histEl.innerHTML = histogram.map((count, i) => {
+    const h = maxHist > 0 ? (count / maxHist * 100) : 0;
+    return `<div class="bar" style="height:${Math.max(2, h)}%;background:${exposureColorCSS(i, 0.7)}" title="${i}: ${formatNumber(count)} jobs"></div>`;
+  }).join("");
+
+  // Tier breakdown
+  const tierEl = document.getElementById("tierBar");
+  tierEl.innerHTML = tiers.map(t =>
+    `<div class="tier-row">
+      <div class="tier-color" style="background:${t.color}"></div>
+      <span class="tier-name">${t.name} (${t.range[0]}-${t.range[1]})</span>
+      <span class="tier-jobs">${formatNumber(t.jobs)}</span>
+      <span class="tier-pct">${t.pct.toFixed(0)}%</span>
+    </div>`
+  ).join("");
+
+  // Exposure by pay band
+  const payBands = [
+    { label: "<$35K", min: 0, max: 35000 },
+    { label: "$35–50K", min: 35000, max: 50000 },
+    { label: "$50–75K", min: 50000, max: 75000 },
+    { label: "$75–100K", min: 75000, max: 100000 },
+    { label: "$100K+", min: 100000, max: Infinity },
+  ];
+  const payChartEl = document.getElementById("payChart");
+  payChartEl.innerHTML = payBands.map(band => {
+    let wSum = 0, wCount = 0;
+    for (const d of data) {
+      if (d.exposure != null && d.jobs && d.pay != null &&
+          d.pay >= band.min && d.pay < band.max) {
+        wSum += d.exposure * d.jobs;
+        wCount += d.jobs;
+      }
+    }
+    const avg = wCount > 0 ? wSum / wCount : 0;
+    const pct = avg / 10 * 100;
+    return `<div class="hbar-row">
+      <span class="hbar-label">${band.label}</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;background:${exposureColorCSS(avg, 0.8)}"></div></div>
+      <span class="hbar-val">${avg.toFixed(1)}</span>
+    </div>`;
+  }).join("");
+
+  // Exposure by education
+  const eduGroups = [
+    { label: "No degree/HS", match: ["No formal educational credential", "High school diploma or equivalent"] },
+    { label: "Postsec/Assoc", match: ["Postsecondary nondegree award", "Some college, no degree", "Associate's degree"] },
+    { label: "Bachelor's", match: ["Bachelor's degree"] },
+    { label: "Master's", match: ["Master's degree"] },
+    { label: "Doctoral/Prof", match: ["Doctoral or professional degree"] },
+  ];
+  const eduChartEl = document.getElementById("eduChart");
+  eduChartEl.innerHTML = eduGroups.map(grp => {
+    let wSum = 0, wCount = 0;
+    for (const d of data) {
+      if (d.exposure != null && d.jobs && grp.match.includes(d.education)) {
+        wSum += d.exposure * d.jobs;
+        wCount += d.jobs;
+      }
+    }
+    const avg = wCount > 0 ? wSum / wCount : 0;
+    const pct = avg / 10 * 100;
+    return `<div class="hbar-row">
+      <span class="hbar-label">${grp.label}</span>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${pct}%;background:${exposureColorCSS(avg, 0.8)}"></div></div>
+      <span class="hbar-val">${avg.toFixed(1)}</span>
+    </div>`;
+  }).join("");
+
+  // Wages
+  const trillions = wagesExposed / 1e12;
+  document.getElementById("statWages").textContent =
+    "$" + trillions.toFixed(1) + "T";
+}
+
+// ── Events ─────────────────────────────────────────────────────────────
+
+canvas.addEventListener("mousemove", (e) => {
+  const hit = hitTest(e.clientX, e.clientY);
+  if (hit !== hovered) {
+    hovered = hit;
+    draw();
+  }
+  if (hovered) {
+    showTooltip(hovered, e.clientX, e.clientY);
+    canvas.style.cursor = "pointer";
+  } else {
+    hideTooltip();
+    canvas.style.cursor = "default";
+  }
+});
+
+canvas.addEventListener("click", (e) => {
+  const hit = hitTest(e.clientX, e.clientY);
+  if (hit && hit.url) {
+    window.open(hit.url, "_blank");
+  }
+});
+
+canvas.addEventListener("mouseleave", () => {
+  hovered = null;
+  hideTooltip();
+  draw();
+});
+
+function resize() {
+  dpr = window.devicePixelRatio || 1;
+  layout();
+  draw();
+}
+
+// ── Legend gradient ────────────────────────────────────────────────────
+
+function drawGradientLegend() {
+  const c = document.getElementById("gradientLegend");
+  const gctx = c.getContext("2d");
+  for (let x = 0; x < 80; x++) {
+    const score = (x / 79) * 10;
+    gctx.fillStyle = exposureColorCSS(score, 1);
+    gctx.fillRect(x, 0, 1, 8);
+  }
+}
+
+// ── Load ───────────────────────────────────────────────────────────────
+
+fetch("data.json")
+  .then(r => r.json())
+  .then(d => {
+    data = d;
+    computeStats();
+    drawGradientLegend();
+    resize();
+  });
+
+window.addEventListener("resize", resize);
+</script>
+
+
+</body><div id="immersive-translate-browser-popup" style="all: initial"></div></html>
